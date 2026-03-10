@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ECF CERCA">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#e8321e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
+<title>Schématisation numérique ECF CERCA</title>
+<style>
+/* ═══════════════════════════════════════════
+   RESET & VARIABLES
+═══════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+:root{
+  --bg:#f0ede7;
+  --panel:#1c1c1e;
+  --panel2:#2c2c2e;
+  --acc:#e8321e;
+  --blue:#0a7aff;
+  --green:#30b94a;
+  --muted:#8e8e93;
+  --sb:230px;
+}
+
+/* ═══════════════════════════════════════════
+   LAYOUT : canvas à gauche, sidebar à droite
+═══════════════════════════════════════════ */
+#app{display:flex;width:100vw;height:100dvh;flex-direction:row-reverse;}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR (droite)
+═══════════════════════════════════════════ */
+#sb{
+  width:var(--sb);min-width:var(--sb);
+  background:var(--panel);
+  display:flex;flex-direction:column;
+  z-index:20;
+  box-shadow:-2px 0 18px rgba(0,0,0,.4);
+  transition:width .22s ease,min-width .22s ease;
+  overflow:hidden;
+}
+#sb.hidden{width:0;min-width:0;}
+
+/* Logo */
+.sb-head{
+  padding:12px 14px 10px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex;align-items:center;gap:9px;
+  flex-shrink:0;
+}
+.sb-ico{width:30px;height:30px;border-radius:8px;
+  background:linear-gradient(135deg,#e8321e,#ff7a00);
+  display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;}
+.sb-name{font-size:.7rem;font-weight:800;letter-spacing:3px;color:var(--acc);}
+.sb-sub{font-size:.52rem;color:var(--muted);}
+
+/* Tabs */
+.sb-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;}
+.sb-tab{
+  flex:1;padding:8px 2px;text-align:center;cursor:pointer;
+  font-size:.52rem;font-weight:700;letter-spacing:.7px;
+  color:var(--muted);border-bottom:2.5px solid transparent;
+  transition:color .12s,border-color .12s;white-space:nowrap;
+}
+.sb-tab.on{color:var(--acc);border-bottom-color:var(--acc);}
+.sb-pane{display:none;flex-direction:column;overflow:hidden;flex:1;}
+.sb-pane.on{display:flex;}
+
+/* Scrollable area inside pane */
+.sb-scroll{overflow-y:auto;flex:1;padding-bottom:8px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;}
+
+/* Section label */
+.lbl{font-size:.52rem;font-weight:700;letter-spacing:2px;
+  color:var(--muted);text-transform:uppercase;padding:7px 13px 3px;}
+
+/* Tool button */
+.tb{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 13px;border:none;background:transparent;
+  width:100%;text-align:left;
+  color:rgba(255,255,255,.6);font-size:.74rem;font-weight:500;
+  cursor:pointer;transition:background .12s;
+}
+.tb:hover{background:rgba(255,255,255,.055);color:#fff;}
+.tb.on{background:rgba(232,50,30,.16);color:var(--acc);}
+.tb-i{
+  width:26px;height:26px;border-radius:6px;
+  background:rgba(255,255,255,.06);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;flex-shrink:0;
+}
+.tb.on .tb-i{background:rgba(232,50,30,.22);}
+
+/* Color grid */
+.cg{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;padding:4px 13px;}
+.cd{
+  width:100%;aspect-ratio:1;border-radius:50%;cursor:pointer;
+  border:2.5px solid transparent;transition:transform .12s,border-color .12s;
+}
+.cd:hover{transform:scale(1.2);}
+.cd.on{border-color:#fff;transform:scale(1.06);}
+
+/* Stroke row */
+.sr{display:flex;gap:5px;padding:4px 13px;}
+.so{
+  flex:1;height:26px;border-radius:5px;
+  background:rgba(255,255,255,.08);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:background .12s;
+}
+.so:hover{background:rgba(255,255,255,.14);}
+.so.on{background:rgba(232,50,30,.26);}
+.sl{background:#fff;border-radius:2px;width:62%;}
+
+/* Element button */
+.eb{
+  display:flex;align-items:center;gap:8px;padding:6px 13px;
+  border:none;background:transparent;color:rgba(255,255,255,.62);
+  font-size:.72rem;cursor:pointer;transition:background .12s;
+  width:100%;text-align:left;
+}
+.eb:hover{background:rgba(255,255,255,.055);color:#fff;}
+.ei{font-size:1.05rem;width:22px;text-align:center;flex-shrink:0;}
+.ec{padding:6px 13px 2px;font-size:.52rem;font-weight:700;
+  letter-spacing:1.5px;color:rgba(255,255,255,.26);
+  text-transform:uppercase;margin-top:3px;}
+
+/* Scenario cards */
+.sc-sec{font-size:.52rem;font-weight:700;letter-spacing:1.5px;
+  color:rgba(255,255,255,.3);text-transform:uppercase;
+  padding:8px 13px 4px;margin-top:4px;}
+.sc-card{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 13px;border:none;background:transparent;
+  color:rgba(255,255,255,.7);font-size:.72rem;cursor:pointer;
+  transition:background .12s;width:100%;text-align:left;
+}
+.sc-card:hover{background:rgba(255,255,255,.07);color:#fff;}
+.sc-ico{font-size:1.2rem;flex-shrink:0;}
+.sc-info{display:flex;flex-direction:column;gap:1px;}
+.sc-name{font-size:.72rem;font-weight:600;}
+.sc-desc{font-size:.6rem;color:var(--muted);}
+
+/* Bottom export buttons */
+.sb-foot{
+  padding:10px 13px;
+  border-top:1px solid rgba(255,255,255,.07);
+  display:flex;flex-direction:column;gap:6px;
+  flex-shrink:0;
+}
+.xbtn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 10px;border-radius:8px;border:none;
+  font-size:.74rem;font-weight:600;cursor:pointer;transition:all .12s;
+}
+.xbtn.png{background:rgba(255,255,255,.1);color:#fff;}
+.xbtn.png:hover{background:rgba(255,255,255,.18);}
+.xbtn.pdf{background:rgba(232,50,30,.22);color:#ff6b5e;}
+.xbtn.pdf:hover{background:rgba(232,50,30,.35);color:#fff;}
+.xbtn.doc{background:rgba(10,122,255,.22);color:#60aeff;}
+.xbtn.doc:hover{background:rgba(10,122,255,.35);color:#fff;}
+.xbtn-row{display:flex;gap:6px;}
+.xbtn-row .xbtn{flex:1;}
+
+/* ═══════════════════════════════════════════
+   CANVAS AREA
+═══════════════════════════════════════════ */
+#cWrap{
+  flex:1;position:relative;background:var(--bg);overflow:hidden;
+  min-width:0;
+}
+#c{position:absolute;top:0;left:0;touch-action:none;}
+
+/* ═══════════════════════════════════════════
+   TOP-LEFT HUD (remplace la topbar)
+═══════════════════════════════════════════ */
+#hud{
+  position:absolute;top:10px;left:10px;
+  display:flex;align-items:center;gap:6px;
+  z-index:15;pointer-events:auto;
+}
+.hbtn{
+  background:rgba(28,28,30,.82);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.1);
+  color:#fff;border-radius:9px;
+  padding:6px 10px;font-size:.72rem;font-weight:600;
+  cursor:pointer;transition:background .12s;
+  display:flex;align-items:center;gap:5px;white-space:nowrap;
+}
+.hbtn:hover{background:rgba(60,60,65,.9);}
+.hbtn.red{color:#ff6b5e;}
+.hbtn.red:hover{background:rgba(232,50,30,.35);}
+#hudTitle{
+  background:rgba(28,28,30,.72);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.08);
+  color:var(--muted);border-radius:9px;
+  padding:6px 12px;font-size:.7rem;font-weight:600;
+  font-family:'SF Mono',monospace;pointer-events:none;
+  max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+/* selection actions */
+#selHud{
+  position:absolute;top:10px;right:calc(var(--sb) + 10px);
+  display:none;align-items:center;gap:5px;z-index:15;
+}
+#selHud.show{display:flex;}
+
+/* ═══════════════════════════════════════════
+   MOBILE OVERLAY SIDEBAR
+═══════════════════════════════════════════ */
+#sbOv{display:none;position:fixed;inset:0;z-index:15;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(3px);}
+#sbOv.show{display:block;}
+
+@media(max-width:680px){
+  :root{--sb:0px;}
+  #sb{
+    position:fixed;top:0;right:0;height:100dvh;
+    width:240px;min-width:240px;
+    transform:translateX(100%);
+    transition:transform .22s ease;
+  }
+  #sb.open{transform:translateX(0);}
+  #selHud{right:10px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══════════════════════════════════════
+     SIDEBAR DROITE
+══════════════════════════════════════ -->
+<div id="sb">
+  <div class="sb-head">
+    <img src="data:image/png;base64,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" style="height:30px;width:auto;flex-shrink:0;object-fit:contain;" alt="ECF">
+    <div>
+      <div class="sb-name" style="font-size:.6rem;letter-spacing:1.5px;">ECF CERCA</div>
+      <div class="sb-sub">Schématisation numérique</div>
+    </div>
+  </div>
+
+  <div class="sb-tabs">
+    <div class="sb-tab on"  id="sbt-tools"    onclick="sbTab('tools')">OUTILS</div>
+    <div class="sb-tab"     id="sbt-elems"    onclick="sbTab('elems')">ÉLÉMENTS</div>
+    <div class="sb-tab"     id="sbt-scenes"   onclick="sbTab('scenes')">SCÉNARIOS</div>
+  </div>
+
+  <!-- ── ONGLET OUTILS ── -->
+  <div class="sb-pane on" id="sbp-tools">
+    <div class="sb-scroll">
+      <div class="lbl">Dessin</div>
+      <button class="tb on" id="tool-select"    onclick="setTool('select')">   <div class="tb-i">↖</div>Sélection / déplacer</button>
+      <button class="tb"    id="tool-pen"       onclick="setTool('pen')">      <div class="tb-i">✏️</div>Crayon libre</button>
+      <button class="tb"    id="tool-road"      onclick="setTool('road')">     <div class="tb-i">🛣️</div>Route droite</button>
+      <button class="tb"    id="tool-roadcurve" onclick="setTool('roadcurve')"><div class="tb-i">↩️</div>Route courbe</button>
+      <button class="tb"    id="tool-arrow"     onclick="setTool('arrow')">    <div class="tb-i">➡️</div>Flèche de sens</button>
+      <button class="tb"    id="tool-dasharrow" onclick="setTool('dasharrow')"><div class="tb-i">⤳</div>Flèche pointillée</button>
+      <button class="tb"    id="tool-zone"      onclick="setTool('zone')">     <div class="tb-i">⬛</div>Zone / rectangle</button>
+      <button class="tb"    id="tool-circle"    onclick="setTool('circle')">   <div class="tb-i">⭕</div>Cercle</button>
+      <button class="tb"    id="tool-text"      onclick="setTool('text')">     <div class="tb-i" style="font-weight:800;font-size:.78rem">T</div>Texte</button>
+      <button class="tb"    id="tool-erase"     onclick="setTool('erase')">    <div class="tb-i">🧹</div>Gomme</button>
+      <button class="tb"    id="tool-number"    onclick="setTool('number')">   <div class="tb-i" style="font-weight:800;font-size:.82rem;color:var(--acc)">①</div>Numérotation</button>
+      <button class="tb" onclick="stepCounter=1;toast('Compteur remis à 1')" style="padding-left:47px;color:rgba(255,255,255,.35);font-size:.66rem;">↺ Remettre à 1</button>
+
+      <div style="border-top:1px solid rgba(255,255,255,.06);margin-top:4px;padding-top:2px;">
+        <div class="lbl">Couleur du tracé</div>
+        <div class="cg" id="cGrid">
+          <div class="cd on" style="background:#1c1c1e"                          data-c="#1c1c1e"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#e8321e"                          data-c="#e8321e"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#0a7aff"                          data-c="#0a7aff"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#30b94a"                          data-c="#30b94a"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#f08000"                          data-c="#f08000"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#f5c800"                          data-c="#f5c800"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#fff;border:1px solid #555"       data-c="#ffffff"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#5ac8fa"                          data-c="#5ac8fa"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#af52de"                          data-c="#af52de"              onclick="setColor(this)"></div>
+          <div class="cd"    style="background:#636366"                          data-c="#636366"              onclick="setColor(this)"></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:2px;">
+        <div class="lbl">Épaisseur</div>
+        <div class="sr">
+          <div class="so on" data-s="2"  onclick="setSz(this)"><div class="sl" style="height:2px"></div></div>
+          <div class="so"    data-s="4"  onclick="setSz(this)"><div class="sl" style="height:4px"></div></div>
+          <div class="so"    data-s="8"  onclick="setSz(this)"><div class="sl" style="height:8px"></div></div>
+          <div class="so"    data-s="16" onclick="setSz(this)"><div class="sl" style="height:12px"></div></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,.06);padding-top:2px;">
+        <div class="lbl">Remplissage</div>
+        <div class="cg" id="fGrid">
+          <div class="cd" style="background:transparent;border:1px dashed #555;font-size:.56rem;line-height:26px;text-align:center;color:#666" data-f="none"                  onclick="setFill(this)">∅</div>
+          <div class="cd on" style="background:rgba(58,58,60,.15)"    data-f="rgba(58,58,60,.15)"    onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(200,230,192,.55)"  data-f="rgba(200,230,192,.55)" onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(232,50,30,.15)"    data-f="rgba(232,50,30,.15)"   onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(10,122,255,.15)"   data-f="rgba(10,122,255,.15)"  onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(245,200,0,.3)"     data-f="rgba(245,200,0,.3)"    onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(175,82,222,.2)"    data-f="rgba(175,82,222,.2)"   onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(240,128,0,.2)"     data-f="rgba(240,128,0,.2)"    onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(90,200,250,.25)"   data-f="rgba(90,200,250,.25)"  onclick="setFill(this)"></div>
+          <div class="cd"    style="background:rgba(175,150,125,.4)"   data-f="rgba(175,150,125,.4)"  onclick="setFill(this)"></div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,.06);padding:6px 0;">
+        <button class="tb" onclick="undo()" style="color:rgba(255,255,255,.5)"><div class="tb-i">↩</div>Annuler</button>
+        <button class="tb" onclick="redo()" style="color:rgba(255,255,255,.5)"><div class="tb-i">↪</div>Rétablir</button>
+        <button class="tb" onclick="toggleGrid()" id="btnGrid" style="color:rgba(255,255,255,.5)"><div class="tb-i">⊞</div>Grille</button>
+        <button class="tb" onclick="clearAll()" style="color:#ff6b5e"><div class="tb-i">🗑</div>Tout effacer</button>
+        <button class="tb" id="zoomReset"><div class="tb-i">🔍</div>Reset zoom</button>
+      </div>
+    </div>
+
+    <!-- Export buttons at bottom -->
+    <div class="sb-foot">
+      <div class="lbl" style="padding:0 0 4px">Exporter</div>
+      <button class="xbtn png" onclick="exportPNG()">🖼 PNG</button>
+      <div class="xbtn-row">
+        <button class="xbtn pdf" onclick="exportPDF()">📄 PDF</button>
+        <button class="xbtn doc" onclick="exportWord()">📝 Word</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ONGLET ÉLÉMENTS ── -->
+  <div class="sb-pane" id="sbp-elems">
+    <div class="sb-scroll">
+      <div class="ec">🚗 Véhicules</div>
+      <button class="eb" onclick="placeEl('🚗','Voiture')">      <span class="ei">🚗</span>Voiture</button>
+      <button class="eb" onclick="placeEl('🚛','Camion')">       <span class="ei">🚛</span>Camion</button>
+      <button class="eb" onclick="placeEl('🏍️','Moto')">         <span class="ei">🏍️</span>Moto</button>
+      <button class="eb" onclick="placeEl('🚌','Bus')">          <span class="ei">🚌</span>Bus</button>
+      <button class="eb" onclick="placeEl('🚲','Vélo')">         <span class="ei">🚲</span>Vélo</button>
+      <button class="eb" onclick="placeEl('🚶','Piéton')">       <span class="ei">🚶</span>Piéton</button>
+      <button class="eb" onclick="placeEl('🚑','Ambulance')">    <span class="ei">🚑</span>Ambulance</button>
+      <button class="eb" onclick="placeEl('🚓','Police')">       <span class="ei">🚓</span>Police</button>
+
+      <div class="ec">⚖️ Panneaux priorité</div>
+      <button class="eb" onclick="placeS('sign_prio_route')"> <span class="ei">🟡</span>Route prioritaire</button>
+      <button class="eb" onclick="placeS('sign_cede')">       <span class="ei">🔺</span>Cédez le passage</button>
+      <button class="eb" onclick="placeS('sign_stop')">       <span class="ei">🛑</span>STOP</button>
+      <button class="eb" onclick="placeS('sign_st_andre')">   <span class="ei">✕</span>Triangle St-André (prior. droite)</button>
+
+      <div class="ec">🚶 Voirie</div>
+      <button class="eb" onclick="placeS('passage_pieton')">  <span class="ei">🦓</span>Passage piéton</button>
+
+      <div class="ec">🔄 Giratoire</div>
+      <button class="eb" onclick="placeS('sign_gira')">     <span class="ei">🔄</span>Panneau giratoire</button>
+
+      <div class="ec">🅿️ Stationnement</div>
+      <button class="eb" onclick="placeS('park_ok')">      <span class="ei">🅿️</span>Autorisé</button>
+      <button class="eb" onclick="placeS('park_no')">      <span class="ei">🚫</span>Interdit</button>
+      <button class="eb" onclick="placeS('park_handicap')"><span class="ei">♿</span>PMR</button>
+      <button class="eb" onclick="placeS('park_payant')">  <span class="ei">💳</span>Payant</button>
+
+
+
+      <div class="ec">🚦 Signalisation</div>
+      <button class="eb" onclick="placeS('feu_tricolore')"><span class="ei">🚦</span>Feu tricolore</button>
+
+      <div class="ec">🏙️ Décor</div>
+      <button class="eb" onclick="placeEl('🌳','Arbre')">   <span class="ei">🌳</span>Arbre</button>
+      <button class="eb" onclick="placeEl('🏢','Bâtiment')"><span class="ei">🏢</span>Bâtiment</button>
+      <button class="eb" onclick="placeEl('🏫','École')">   <span class="ei">🏫</span>École</button>
+    </div>
+  </div>
+
+  <!-- ── ONGLET SCÉNARIOS ── -->
+  <div class="sb-pane" id="sbp-scenes">
+    <div class="sb-scroll">
+      <div class="sc-sec">Intersections</div>
+      <button class="sc-card" onclick="loadScene('inter4')">          <span class="sc-ico">✚</span>  <div class="sc-info"><div class="sc-name">Carrefour 4 voies</div>      <div class="sc-desc">Intersection classique</div></div></button>
+      <button class="sc-card" onclick="loadScene('inter3_T_bas')">    <span class="sc-ico">⊥</span>  <div class="sc-info"><div class="sc-name">Carrefour T – route bas</div><div class="sc-desc">Voie montant du bas</div></div></button>
+      <button class="sc-card" onclick="loadScene('inter4_bas')">      <span class="sc-ico">↑✚</span> <div class="sc-info"><div class="sc-name">4 voies – axe bas</div>       <div class="sc-desc">Axe montant surlignné</div></div></button>
+      <button class="sc-card" onclick="loadScene('inter_prio_droite')"><span class="sc-ico">➡️</span><div class="sc-info"><div class="sc-name">Priorité à droite</div>      <div class="sc-desc">Schéma pédagogique</div></div></button>
+      <button class="sc-card" onclick="loadScene('sens_unique')">     <span class="sc-ico">↔</span>  <div class="sc-info"><div class="sc-name">Sens unique</div>             <div class="sc-desc">Voie à sens unique</div></div></button>
+      <button class="sc-card" onclick="loadScene('voie_insertion')">  <span class="sc-ico">🛣️</span> <div class="sc-info"><div class="sc-name">2×2 voies – insertion</div>    <div class="sc-desc">Voie d'insertion</div></div></button>
+      <button class="sc-card" onclick="loadScene('voie_deceleration')"><span class="sc-ico">🛣️</span> <div class="sc-info"><div class="sc-name">2×2 voies – décélération</div><div class="sc-desc">Voie de décélération</div></div></button>
+
+      <div class="sc-sec">Giratoires</div>
+      <button class="sc-card" onclick="loadScene('gira1')"><span class="sc-ico">🔄</span><div class="sc-info"><div class="sc-name">Giratoire 1 voie</div><div class="sc-desc">Rond-point simple</div></div></button>
+      <button class="sc-card" onclick="loadScene('gira2')"><span class="sc-ico">🔄</span><div class="sc-info"><div class="sc-name">Giratoire 2 voies</div><div class="sc-desc">Double anneau</div></div></button>
+      <button class="sc-card" onclick="loadScene('gira3')"><span class="sc-ico">🔄</span><div class="sc-info"><div class="sc-name">Giratoire 3 voies</div><div class="sc-desc">Grand carrefour</div></div></button>
+
+      <div class="sc-sec">Stationnements</div>
+      <button class="sc-card" onclick="loadScene('park_bataille')"><span class="sc-ico">🅿️</span><div class="sc-info"><div class="sc-name">En bataille</div><div class="sc-desc">Perpendiculaire</div></div></button>
+      <button class="sc-card" onclick="loadScene('park_creneau')"> <span class="sc-ico">🅿️</span><div class="sc-info"><div class="sc-name">En créneau</div> <div class="sc-desc">Parallèle</div></div></button>
+      <button class="sc-card" onclick="loadScene('park_epi')">     <span class="sc-ico">🅿️</span><div class="sc-info"><div class="sc-name">En épi</div>      <div class="sc-desc">Angle 45°</div></div></button>
+
+      <div class="sc-sec">Mécanique</div>
+      <button class="sc-card" onclick="loadScene('meca_car_schema')">  <span class="sc-ico">🚗</span><div class="sc-info"><div class="sc-name">Chaîne cinématique</div>      <div class="sc-desc">Vue voiture latérale</div></div></button>
+      <button class="sc-card" onclick="loadScene('meca_chaine')">       <span class="sc-ico">⛓️</span><div class="sc-info"><div class="sc-name">Chaîne cinématique</div>   <div class="sc-desc">Schéma blocs techniques</div></div></button>
+      <button class="sc-card" onclick="loadScene('emb_3etats')">        <span class="sc-ico">🦶</span><div class="sc-info"><div class="sc-name">Embrayage – 3 états</div>  <div class="sc-desc">Débrayé / patinage / embrayé</div></div></button>
+      <button class="sc-card" onclick="loadScene('emb_debraye')">       <span class="sc-ico">🦶</span><div class="sc-info"><div class="sc-name">Embrayage débrayé</div>    <div class="sc-desc">Pédale enfoncée</div></div></button>
+      <button class="sc-card" onclick="loadScene('emb_patinage')">      <span class="sc-ico">🦶</span><div class="sc-info"><div class="sc-name">Point de patinage</div>    <div class="sc-desc">Contact partiel</div></div></button>
+      <button class="sc-card" onclick="loadScene('emb_embraye')">       <span class="sc-ico">🦶</span><div class="sc-info"><div class="sc-name">Embrayage embrayé</div>    <div class="sc-desc">Pédale relâchée</div></div></button>
+
+      <div class="sc-sec">Autres</div>
+      <button class="sc-card" onclick="loadScene('urban')">  <span class="sc-ico">🏙️</span><div class="sc-info"><div class="sc-name">Zone urbaine</div>    <div class="sc-desc">Rue avec trottoirs</div></div></button>
+      <button class="sc-card" onclick="loadScene('highway')"><span class="sc-ico">🛣️</span><div class="sc-info"><div class="sc-name">Route nationale</div>  <div class="sc-desc">Voies doubles</div></div></button>
+      <button class="sc-card" onclick="loadScene('blank')">  <span class="sc-ico">⬜</span><div class="sc-info"><div class="sc-name">Vierge</div>           <div class="sc-desc">Page blanche</div></div></button>
+    </div>
+  </div>
+</div><!-- /sidebar -->
+
+<!-- ══════════════════════════════════════
+     CANVAS AREA
+══════════════════════════════════════ -->
+<div id="cWrap">
+  <canvas id="c"></canvas>
+
+  <!-- HUD haut-gauche -->
+  <div id="hud">
+    <button class="hbtn" id="btnMenu" onclick="toggleSb()" title="Ouvrir/fermer le panneau">☰</button>
+    <div id="hudTitle">Nouveau schéma</div>
+  </div>
+
+  <!-- Actions sur sélection -->
+  <div id="selHud">
+    <button class="hbtn"     onclick="dupSel()" title="Dupliquer">⧉</button>
+    <button class="hbtn"     onclick="rotSel()" title="Rotation">↻</button>
+    <button class="hbtn red" onclick="delSel()" title="Supprimer">✕ Suppr.</button>
+  </div>
+</div>
+
+<!-- Mobile sidebar overlay -->
+<div id="sbOv" onclick="closeSb()"></div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;top:14px;left:50%;transform:translateX(-50%);
+  background:#1c1c1e;color:#fff;font-size:.72rem;padding:5px 16px;border-radius:16px;
+  opacity:0;transition:opacity .3s;z-index:200;pointer-events:none;white-space:nowrap;
+  box-shadow:0 3px 14px rgba(0,0,0,.3);"></div>
+<script src="app.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js')
+      .then(function(r){console.log('SW ok');})
+      .catch(function(e){console.log('SW err',e);});
+  });
+}
+</script>
+</body>
+</html>
